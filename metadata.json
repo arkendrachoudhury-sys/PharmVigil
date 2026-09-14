@@ -1,0 +1,8 @@
+{
+  "name": "PharmVigil",
+  "description": "Clinical Pharmacovigilance and Regulatory Informatics System for AE/SAE grading.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
