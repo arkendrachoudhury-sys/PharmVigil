@@ -58,19 +58,28 @@ flowchart LR
 
 ## Releases & Installation
 
+PharmVigil targets Android 7.0 (API level 24) and higher.
+
 ### Prebuilt APK Download
-To download prebuilt Android binaries:
-* **GitHub Releases**: Download the tagged release assets from the repository's **Releases** tab.
-* **Actions Artifacts**: For the latest development builds, navigate to the repository's **Actions** tab, select the most recent successful workflow run, and download the `app-debug` build artifact.
+To download a prebuilt Android binary:
+* **GitHub Releases**: Download the tagged release assets from the repository's **[Releases](../../releases)** tab.
+* **Actions Artifacts**: For the latest development build, go to the repository's **[Actions](../../actions)** tab, select the most recent successful workflow run, and download the `app-debug` build artifact.
 
 ### Building From Source
 If you prefer to compile the application locally:
 ```bash
 # 1. Clone the repository
-git clone <repository-url>
-cd <repository-folder>
+git clone https://github.com/arkendrachoudhury-sys/PharmVigil.git
+cd PharmVigil
 
-# 2. Build the debug APK using Gradle Wrapper
-./gradlew assembleDebug
+# 2. Build the debug APK using the Gradle Wrapper
+./gradlew assembleDebug        # use gradlew.bat on Windows
 ```
-The output APK will be generated at `app/build/outputs/apk/debug/app-debug.apk`.
+
+The output APK will be generated at `app/build/outputs/apk/debug/app-debug.apk`. This path only exists locally after a successful build — it is excluded from version control via `.gitignore`, so it will not be present in a fresh clone of the repository.
+
+### Installation Steps
+1. Transfer `app-debug.apk` (from a Release, an Actions artifact, or your own build) to your Android device.
+2. Tap the APK file in your Android File Manager to install.
+3. Enable "Install from Unknown Sources" in Android Security Settings if prompted.
+4. Launch **PharmVigil** directly on device with full offline local Room SQLite persistence.
