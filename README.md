@@ -58,11 +58,19 @@ flowchart LR
 
 ## Releases & Installation
 
-The application is fully compiled and ready to install on any Android smartphone running Android 7.0 (API level 24) or higher.
+### Prebuilt APK Download
+To download prebuilt Android binaries:
+* **GitHub Releases**: Download the tagged release assets from the repository's **Releases** tab.
+* **Actions Artifacts**: For the latest development builds, navigate to the repository's **Actions** tab, select the most recent successful workflow run, and download the `app-debug` build artifact.
 
-* **Android APK File Location**: [`app/build/outputs/apk/debug/app-debug.apk`](app/build/outputs/apk/debug/app-debug.apk)
-* **Installation Steps**:
-  1. Transfer `app-debug.apk` to your Android device.
-  2. Tap the APK file in your Android File Manager to install.
-  3. Ensure "Install from Unknown Sources" is enabled in Android Security Settings if prompted.
-  4. Launch **PharmVigil** directly on device with full offline local Room SQLite persistence.
+### Building From Source
+If you prefer to compile the application locally:
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd <repository-folder>
+
+# 2. Build the debug APK using Gradle Wrapper
+./gradlew assembleDebug
+```
+The output APK will be generated at `app/build/outputs/apk/debug/app-debug.apk`.
