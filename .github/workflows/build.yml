@@ -1,42 +1,64 @@
-name: Android CI & Release
+name: Build APK
 
+# Runs on every push/PR to main, and on version tags (e.g. v1.0.0) to publish a Release.
 on:
   push:
-    branches:
-      - main
-    tags:
-      - 'v*'
+    branches: [ "main" ]
+    tags: [ "v*" ]
   pull_request:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: "17"
 
-      - name: Grant Execute Permission for Gradle Wrapper
-        run: chmod +x gradlew
+      - name: Grant execute permission to gradlew
+        run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      # app/build.gradle.kts expects a debug keystore at ${rootDir}/debug.keystore
+      # (signingConfigs "debugConfig"). It's gitignored since debug keystores are
+      # not sensitive but shouldn't be committed, so generate one here before building.
+      - name: Generate debug keystore
+        run: |
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Upload Debug APK Artifact
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      # Uploads the APK as a build artifact on EVERY run (push, PR, tag).
+      # Download it from the Actions tab -> the workflow run -> "Artifacts" section.
+      - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
-      - name: Attach APK to GitHub Release
+      # Only runs when a version tag like "v1.0.0" is pushed.
+      # Publishes the APK to a GitHub Release so users have a permanent, stable download link.
+      - name: Create Release with APK
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
