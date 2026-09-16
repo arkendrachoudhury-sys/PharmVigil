@@ -6,7 +6,7 @@ object DemoData {
     val sampleCases = listOf(
         AeCase(
             patientId = "SUBJ-1002",
-            protocolId = "ONC-2026-01",
+            protocolId = "DEMO-2026",
             suspectDrug = "Pembrolizumab (Keytruda)",
             adverseEventTerm = "Immune-mediated Colitis",
             medDraPt = "Colitis",
@@ -19,11 +19,12 @@ object DemoData {
             causality = "Probable",
             outcome = "Recovering/Resolving",
             actionTakenWithDrug = "Permanently Discontinued",
-            clinicalNotes = "Subject presented with >6 stools/day over baseline, severe cramping. Admitted for IV corticosteroids."
+            clinicalNotes = "Subject presented with >6 stools/day over baseline, severe cramping. Admitted for IV corticosteroids.",
+            isDemo = true
         ),
         AeCase(
             patientId = "SUBJ-1045",
-            protocolId = "ONC-2026-01",
+            protocolId = "DEMO-2026",
             suspectDrug = "Nivolumab",
             adverseEventTerm = "Fatigue",
             medDraPt = "Fatigue",
@@ -36,11 +37,12 @@ object DemoData {
             causality = "Possible",
             outcome = "Recovering/Resolving",
             actionTakenWithDrug = "Dose Not Changed",
-            clinicalNotes = "Mild fatigue reported on Day 14 post infusion, no interference with ADLs."
+            clinicalNotes = "Mild fatigue reported on Day 14 post infusion, no interference with ADLs.",
+            isDemo = true
         ),
         AeCase(
             patientId = "SUBJ-1088",
-            protocolId = "CV-402-HEART",
+            protocolId = "DEMO-2026",
             suspectDrug = "Trastuzumab deruxtecan",
             adverseEventTerm = "Interstitial Lung Disease / Pneumonitis",
             medDraPt = "Pneumonitis",
@@ -53,11 +55,12 @@ object DemoData {
             causality = "Probable",
             outcome = "Not Recovered",
             actionTakenWithDrug = "Permanently Discontinued",
-            clinicalNotes = "Acute hypoxia (SpO2 84%), bilateral infiltrates on HRCT. Transferred to ICU, high-dose methylprednisolone."
+            clinicalNotes = "Acute hypoxia (SpO2 84%), bilateral infiltrates on HRCT. Transferred to ICU, high-dose methylprednisolone.",
+            isDemo = true
         ),
         AeCase(
             patientId = "SUBJ-1014",
-            protocolId = "ONC-2026-01",
+            protocolId = "DEMO-2026",
             suspectDrug = "Cisplatin",
             adverseEventTerm = "Nausea",
             medDraPt = "Nausea",
@@ -70,11 +73,12 @@ object DemoData {
             causality = "Definite",
             outcome = "Recovered/Resolved",
             actionTakenWithDrug = "Dose Not Changed",
-            clinicalNotes = "Managed with oral Ondansetron and Dexamethasone with good resolution."
+            clinicalNotes = "Managed with oral Ondansetron and Dexamethasone with good resolution.",
+            isDemo = true
         ),
         AeCase(
             patientId = "SUBJ-1033",
-            protocolId = "ONC-2026-01",
+            protocolId = "DEMO-2026",
             suspectDrug = "Paclitaxel",
             adverseEventTerm = "Peripheral sensory neuropathy",
             medDraPt = "Peripheral sensory neuropathy",
@@ -87,7 +91,8 @@ object DemoData {
             causality = "Probable",
             outcome = "Not Recovered",
             actionTakenWithDrug = "Dose Reduced",
-            clinicalNotes = "Bilateral 'stocking-glove' tingling affecting buttoning shirts. Dose reduced by 20% for Cycle 4."
+            clinicalNotes = "Bilateral 'stocking-glove' tingling affecting buttoning shirts. Dose reduced by 20% for Cycle 4.",
+            isDemo = true
         )
     )
 }

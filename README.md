@@ -1,18 +1,20 @@
 # PharmVigil
 
-PharmVigil is a standalone, offline-first clinical pharmacovigilance application designed for healthcare professionals, clinical trial investigators, and regulatory compliance teams. It facilitates the structured grading, logging, and evaluation of Adverse Events (AE) and Serious Adverse Events (SAE) without requiring active network connectivity or external API dependencies.
+PharmVigil is a standalone, offline-first clinical pharmacovigilance and adverse event grading utility designed for healthcare professionals, clinical trial investigators, and regulatory compliance teams. It enables structured grading, logging, editing, and evaluation of Adverse Events (AE) and Serious Adverse Events (SAE) without requiring network connectivity or external API calls.
 
 ## Core Capabilities
 
-*   **CTCAE Reference Library**: An embedded, searchable offline encyclopedia containing common Common Terminology Criteria for Adverse Events (CTCAE) terms, mapped to MedDRA Preferred Terms (PT) and System Organ Classes (SOC).
-*   **SAE Regulatory Wizard**: An interactive decision matrix utilizing ICH E2A and FDA 21 CFR 312.32 guidelines. It evaluates seriousness criteria, causality, and expectedness to determine Suspected Unexpected Serious Adverse Reaction (SUSAR) status and calculate expedited regulatory reporting clocks (e.g., 7-day vs 15-day).
-*   **Local Data Persistence**: Secure, on-device storage of clinical event logs utilizing Android Room database architecture. Maintains Subject IDs, suspect drugs, clinical narratives, causality assessments, and drug actions.
-*   **Automated Narrative Generation**: Formats logged case parameters into standardized CIOMS-I / ICH E2A narrative structures, available for immediate clipboard export.
-*   **Analytics Dashboard**: Native visual analytics tracking severity distribution (Grade 1 through Grade 5), seriousness proportions, and critical sentinel event monitoring across active cases.
+*   **CTCAE v5.0 Reference Library**: Embedded offline catalog containing high-frequency Common Terminology Criteria for Adverse Events (CTCAE v5.0) terms, mapped to MedDRA Preferred Terms (PT) and System Organ Classes (SOC).
+*   **FDA IND SAE Regulatory Decision Support**: Interactive decision aid aligned with FDA 21 CFR 312.32 and ICH E2A guidelines. Evaluates regulatory seriousness criteria, causality, and expectedness against Reference Safety Information (RSI) to determine SUSAR status and expedited reporting clocks (7-day vs 15-day).
+*   **On-Device Clinical Persistence**: Local Room SQLite storage for clinical event logs (Subject IDs, suspect drugs, explicit onset dates, clinical outcomes, drug actions, and narrative notes).
+*   **Editable Case Management**: Full support for adding, reviewing, editing, and deleting logged cases with mandatory field domain validation and deletion confirmation dialogs.
+*   **Automated CIOMS-I Narrative Export**: Formats stored case parameters into standardized CIOMS-I / ICH E2A expedited report narratives for clipboard export.
+*   **Synthetic Demo Data**: Opt-in "Load Sample Cases" feature for testing and demonstration without auto-seeding unverified data into clinical logs.
+*   **Analytics Dashboard**: Visual summary tracking severity distributions (Grade 1 to 5), seriousness proportions, and critical sentinel events across stored cases.
 
 ## System Architecture
 
-The application is built entirely on the Android Jetpack Compose framework, prioritizing a smooth, lag-free user experience through asynchronous data handling and local caching.
+PharmVigil is built using modern Android Jetpack Compose architecture and operates completely offline with zero telemetry or network calls.
 
 ```mermaid
 graph TD
@@ -20,7 +22,7 @@ graph TD
     VM[PharmVigil ViewModel]
     Repo[AeCase Repository]
     DB[(Room SQLite Database)]
-    CTCAE[Embedded CTCAE Library]
+    CTCAE[Embedded CTCAE v5.0 Library]
 
     UI -->|Observes StateFlow| VM
     UI -->|Dispatches Events| VM
@@ -29,57 +31,41 @@ graph TD
     Repo -->|Suspend Functions| DB
 ```
 
-## User Flow
+## Technical Specification
 
-The typical clinical workflow within the application is designed for rapid, deterministic data entry at the point of care.
+*   **Min Android Version**: Android 7.0 (API Level 24+)
+*   **Target Android SDK**: API Level 35 (Android 15)
+*   **Language & Toolchain**: Kotlin 2.2.10, Jetpack Compose, KSP 2.3.5, Room 2.7.0
+*   **Package Namespace**: `com.pharmvigil.app`
+*   **Theme**: `Theme.PharmVigil`
+*   **License**: MIT License
 
-```mermaid
-flowchart LR
-    A[Identify Event] --> B{Action Route}
-    
-    B -->|Search Library| C[CTCAE Catalog]
-    C -->|Select Term & Grade| E
-    
-    B -->|Evaluate Criteria| D[SAE Wizard]
-    D -->|Determine Reporting Clock| E
-    
-    E[Log AE/SAE Case] --> F[Local Database Storage]
-    F --> G[CIOMS-I Narrative Export]
-    F --> H[Analytics Dashboard]
-```
-
-## Technical Implementation
-
-*   **Language**: Kotlin
-*   **UI Toolkit**: Jetpack Compose (Material Design 3)
-*   **Architecture**: MVVM (Model-View-ViewModel) with Unidirectional Data Flow
-*   **Local Storage**: Room Persistence Library (SQLite abstract)
-*   **Concurrency**: Kotlin Coroutines & Flow
-
-## Releases & Installation
-
-PharmVigil targets Android 7.0 (API level 24) and higher.
+## Installation & Releases
 
 ### Prebuilt APK Download
-To download a prebuilt Android binary:
-* **GitHub Releases**: Download the tagged release assets from the repository's **[Releases](../../releases)** tab.
-* **Actions Artifacts**: For the latest development build, go to the repository's **[Actions](../../actions)** tab, select the most recent successful workflow run, and download the `app-debug` build artifact.
+
+Download official prebuilt APK binaries directly from GitHub:
+1. Navigate to the **[Releases](../../releases)** page.
+2. Select the latest version tag (e.g. `v1.0.0`).
+3. Download `PharmVigil-v1.0.0-debug.apk` and verify the SHA-256 checksum from `SHA256SUMS.txt`.
+4. Install on your Android device (ensure "Install from Unknown Sources" is enabled in Android Security Settings if prompted).
 
 ### Building From Source
-If you prefer to compile the application locally:
+
 ```bash
-# 1. Clone the repository
+# 1. Clone repository
 git clone https://github.com/arkendrachoudhury-sys/PharmVigil.git
 cd PharmVigil
 
-# 2. Build the debug APK using the Gradle Wrapper
-./gradlew assembleDebug        # use gradlew.bat on Windows
+# 2. Execute unit tests
+./gradlew test
+
+# 3. Build APK
+./gradlew assembleDebug
 ```
 
-The output APK will be generated at `app/build/outputs/apk/debug/app-debug.apk`. This path only exists locally after a successful build — it is excluded from version control via `.gitignore`, so it will not be present in a fresh clone of the repository.
+Output APK will be generated at `app/build/outputs/apk/debug/app-debug.apk`.
 
-### Installation Steps
-1. Transfer `app-debug.apk` (from a Release, an Actions artifact, or your own build) to your Android device.
-2. Tap the APK file in your Android File Manager to install.
-3. Enable "Install from Unknown Sources" in Android Security Settings if prompted.
-4. Launch **PharmVigil** directly on device with full offline local Room SQLite persistence.
+## Regulatory & Clinical Disclaimer
+
+PharmVigil is intended solely as an educational and operational point-of-care decision support utility for clinical pharmacovigilance workflows. CTCAE Grade measures clinical severity, whereas Seriousness is a distinct regulatory threshold under ICH E2A and FDA 21 CFR 312.32. Output generated by this utility does not replace independent medical evaluation by a safety physician, principal investigator, or regulatory sponsor team.

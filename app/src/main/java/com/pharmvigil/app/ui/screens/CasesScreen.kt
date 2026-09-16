@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pharmvigil.app.data.model.AeCase
+import com.pharmvigil.app.ui.components.AddCaseBottomSheet
 import com.pharmvigil.app.ui.components.CaseDetailDialog
 import com.pharmvigil.app.ui.components.GradeBadge
 import com.pharmvigil.app.ui.components.SeriousnessBadge
@@ -41,6 +42,7 @@ fun CasesScreen(
     val selectedSeriousness by viewModel.selectedSeriousnessFilter.collectAsStateWithLifecycle()
 
     var activeCaseForDetail by remember { mutableStateOf<AeCase?>(null) }
+    var caseToEdit by remember { mutableStateOf<AeCase?>(null) }
 
     val totalCases = allCases.size
     val seriousCases = allCases.count { it.isSerious }
@@ -209,9 +211,25 @@ fun CasesScreen(
             case = caseItem,
             ciomsNarrative = viewModel.generateCiomsNarrative(caseItem),
             onDismiss = { activeCaseForDetail = null },
+            onEdit = {
+                caseToEdit = caseItem
+                activeCaseForDetail = null
+            },
             onDelete = {
                 viewModel.deleteCase(caseItem)
                 activeCaseForDetail = null
+            }
+        )
+    }
+
+    // Edit modal dialog
+    caseToEdit?.let { editingCase ->
+        AddCaseBottomSheet(
+            caseToEdit = editingCase,
+            onDismiss = { caseToEdit = null },
+            onSubmit = { updatedCase ->
+                viewModel.updateCase(updatedCase)
+                caseToEdit = null
             }
         )
     }
@@ -240,11 +258,20 @@ private fun CaseCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = case.patientId,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = case.patientId,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    if (case.isDemo) {
+                        SuggestionChip(
+                            onClick = {},
+                            label = { Text("DEMO", style = MaterialTheme.typography.labelSmall) },
+                            modifier = Modifier.height(24.dp)
+                        )
+                    }
+                }
                 Text(
                     text = "Onset: ${case.onsetDate}",
                     style = MaterialTheme.typography.labelSmall,

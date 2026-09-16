@@ -1,6 +1,5 @@
-name: Build APK
+name: Build and Test APK
 
-# Runs on every push/PR to main, and on version tags (e.g. v1.0.0) to publish a Release.
 on:
   push:
     branches: [ "main" ]
@@ -25,9 +24,6 @@ jobs:
       - name: Grant execute permission to gradlew
         run: chmod +x ./gradlew
 
-      # app/build.gradle.kts expects a debug keystore at ${rootDir}/debug.keystore
-      # (signingConfigs "debugConfig"). It's gitignored since debug keystores are
-      # not sensitive but shouldn't be committed, so generate one here before building.
       - name: Generate debug keystore
         run: |
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey \
@@ -44,24 +40,33 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
-      - name: Build debug APK
+      - name: Run Unit Tests
+        run: ./gradlew test --no-daemon
+
+      - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon
 
-      # Uploads the APK as a build artifact on EVERY run (push, PR, tag).
-      # Download it from the Actions tab -> the workflow run -> "Artifacts" section.
-      - name: Upload debug APK artifact
+      - name: Prepare APK Release Asset
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk artifacts/PharmVigil-v1.0.0-debug.apk
+          cd artifacts
+          sha256sum PharmVigil-v1.0.0-debug.apk > SHA256SUMS.txt
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: PharmVigil-v1.0.0-debug
+          path: artifacts/*
           if-no-files-found: error
 
-      # Only runs when a version tag like "v1.0.0" is pushed.
-      # Publishes the APK to a GitHub Release so users have a permanent, stable download link.
-      - name: Create Release with APK
+      - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: |
+            artifacts/PharmVigil-v1.0.0-debug.apk
+            artifacts/SHA256SUMS.txt
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -8,7 +8,7 @@ data class AeCase(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val patientId: String,
-    val protocolId: String = "CLIN-2026-01",
+    val protocolId: String = "",
     val suspectDrug: String,
     val adverseEventTerm: String,
     val medDraPt: String,
@@ -17,10 +17,11 @@ data class AeCase(
     val gradeDescription: String,
     val onsetDate: String,
     val isSerious: Boolean,
-    val seriousnessCriteria: String = "", // e.g., "Hospitalization, Life-threatening"
-    val causality: String = "Possible", // Definite, Probable, Possible, Unlikely, Unrelated
-    val outcome: String = "Recovering/Resolving", // Recovered, Recovering, Not Recovered, Fatal, Unknown
-    val actionTakenWithDrug: String = "Dose Interrupted", // Dose Reduced, Interrupted, Discontinued, Dose Not Changed
+    val seriousnessCriteria: String = "",
+    val causality: String = Causality.POSSIBLE.label,
+    val outcome: String = Outcome.RECOVERING.label,
+    val actionTakenWithDrug: String = ActionTaken.DOSE_INTERRUPTED.label,
     val clinicalNotes: String = "",
-    val reportedTimestamp: Long = System.currentTimeMillis()
+    val reportedTimestamp: Long = System.currentTimeMillis(),
+    val isDemo: Boolean = false
 )

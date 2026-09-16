@@ -22,7 +22,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pharmvigil.app.data.ctcae.CtcaeDatabase
 import com.pharmvigil.app.data.ctcae.CtcaeTerm
+import com.pharmvigil.app.data.model.ActionTaken
 import com.pharmvigil.app.data.model.AeCase
+import com.pharmvigil.app.data.model.AeCaseValidator
+import com.pharmvigil.app.data.model.Causality
+import com.pharmvigil.app.data.model.Outcome
+import com.pharmvigil.app.data.model.ValidationResult
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,29 +36,36 @@ import java.util.Locale
 @Composable
 fun AddCaseBottomSheet(
     preselectedTerm: CtcaeTerm? = null,
+    caseToEdit: AeCase? = null,
     onDismiss: () -> Unit,
     onSubmit: (AeCase) -> Unit
 ) {
-    var patientId by remember { mutableStateOf("") }
-    var protocolId by remember { mutableStateOf("ONC-2026-01") }
-    var suspectDrug by remember { mutableStateOf("") }
-    var adverseEventTerm by remember { mutableStateOf(preselectedTerm?.term ?: "") }
-    var medDraPt by remember { mutableStateOf(preselectedTerm?.medDraPt ?: "") }
-    var soc by remember { mutableStateOf(preselectedTerm?.soc ?: "Gastrointestinal disorders") }
-    var selectedGrade by remember { mutableIntStateOf(1) }
+    val defaultDate = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
+
+    var patientId by remember { mutableStateOf(caseToEdit?.patientId ?: "") }
+    var protocolId by remember { mutableStateOf(caseToEdit?.protocolId ?: "") }
+    var suspectDrug by remember { mutableStateOf(caseToEdit?.suspectDrug ?: "") }
+    var adverseEventTerm by remember { mutableStateOf(caseToEdit?.adverseEventTerm ?: preselectedTerm?.term ?: "") }
+    var medDraPt by remember { mutableStateOf(caseToEdit?.medDraPt ?: preselectedTerm?.medDraPt ?: "") }
+    var soc by remember { mutableStateOf(caseToEdit?.systemOrganClass ?: preselectedTerm?.soc ?: "Gastrointestinal disorders") }
+    var onsetDate by remember { mutableStateOf(caseToEdit?.onsetDate ?: defaultDate) }
+    var selectedGrade by remember { mutableIntStateOf(caseToEdit?.grade ?: 1) }
 
     // Seriousness Criteria checklist
-    var isDeath by remember { mutableStateOf(false) }
-    var isLifeThreatening by remember { mutableStateOf(false) }
-    var isHospitalization by remember { mutableStateOf(false) }
-    var isDisability by remember { mutableStateOf(false) }
-    var isCongenital by remember { mutableStateOf(false) }
-    var isImportantMedicalEvent by remember { mutableStateOf(false) }
+    val initialCriteria = caseToEdit?.seriousnessCriteria ?: ""
+    var isDeath by remember { mutableStateOf(initialCriteria.contains("Death", ignoreCase = true) || (caseToEdit?.grade == 5)) }
+    var isLifeThreatening by remember { mutableStateOf(initialCriteria.contains("Life-threatening", ignoreCase = true) || (caseToEdit?.grade == 4)) }
+    var isHospitalization by remember { mutableStateOf(initialCriteria.contains("Hospitalization", ignoreCase = true)) }
+    var isDisability by remember { mutableStateOf(initialCriteria.contains("Disability", ignoreCase = true)) }
+    var isCongenital by remember { mutableStateOf(initialCriteria.contains("Congenital", ignoreCase = true)) }
+    var isImportantMedicalEvent by remember { mutableStateOf(initialCriteria.contains("Important medical event", ignoreCase = true)) }
 
-    var causality by remember { mutableStateOf("Possible") }
-    var outcome by remember { mutableStateOf("Recovering/Resolving") }
-    var drugAction by remember { mutableStateOf("Dose Interrupted") }
-    var clinicalNotes by remember { mutableStateOf("") }
+    var causality by remember { mutableStateOf(caseToEdit?.causality ?: Causality.POSSIBLE.label) }
+    var outcome by remember { mutableStateOf(caseToEdit?.outcome ?: Outcome.RECOVERING.label) }
+    var drugAction by remember { mutableStateOf(caseToEdit?.actionTakenWithDrug ?: ActionTaken.DOSE_INTERRUPTED.label) }
+    var clinicalNotes by remember { mutableStateOf(caseToEdit?.clinicalNotes ?: "") }
+
+    var validationErrorText by remember { mutableStateOf<String?>(null) }
 
     // Matching CTCAE item
     val matchedCtcae = remember(adverseEventTerm) {
@@ -64,7 +76,7 @@ fun AddCaseBottomSheet(
     LaunchedEffect(selectedGrade) {
         if (selectedGrade == 5) {
             isDeath = true
-            outcome = "Fatal"
+            outcome = Outcome.FATAL.label
         } else if (selectedGrade == 4) {
             isLifeThreatening = true
         }
@@ -87,7 +99,7 @@ fun AddCaseBottomSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Log Adverse Event / SAE",
+                text = if (caseToEdit != null) "Edit Clinical Case" else "Log Adverse Event / SAE",
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -96,7 +108,10 @@ fun AddCaseBottomSheet(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = patientId,
-                    onValueChange = { patientId = it },
+                    onValueChange = {
+                        patientId = it
+                        validationErrorText = null
+                    },
                     label = { Text("Subject ID *") },
                     placeholder = { Text("e.g. SUBJ-1082") },
                     modifier = Modifier.weight(1f).testTag("patient_id_input"),
@@ -107,22 +122,39 @@ fun AddCaseBottomSheet(
                     value = protocolId,
                     onValueChange = { protocolId = it },
                     label = { Text("Protocol ID") },
+                    placeholder = { Text("e.g. CLIN-2026") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp)
                 )
             }
 
-            // Suspect Drug
-            OutlinedTextField(
-                value = suspectDrug,
-                onValueChange = { suspectDrug = it },
-                label = { Text("Suspect Drug / Agent *") },
-                placeholder = { Text("e.g. Pembrolizumab, Cisplatin, Doxorubicin") },
-                modifier = Modifier.fillMaxWidth().testTag("suspect_drug_input"),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
+            // Suspect Drug & Onset Date
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = suspectDrug,
+                    onValueChange = {
+                        suspectDrug = it
+                        validationErrorText = null
+                    },
+                    label = { Text("Suspect Drug *") },
+                    placeholder = { Text("e.g. Pembrolizumab") },
+                    modifier = Modifier.weight(1f).testTag("suspect_drug_input"),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                OutlinedTextField(
+                    value = onsetDate,
+                    onValueChange = {
+                        onsetDate = it
+                        validationErrorText = null
+                    },
+                    label = { Text("Onset Date (YYYY-MM-DD) *") },
+                    modifier = Modifier.weight(1f).testTag("onset_date_input"),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
 
             // Adverse Event Term
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -130,11 +162,7 @@ fun AddCaseBottomSheet(
                     value = adverseEventTerm,
                     onValueChange = { input ->
                         adverseEventTerm = input
-                        val match = CtcaeDatabase.terms.find { it.term.contains(input, ignoreCase = true) }
-                        if (match != null && input.isNotBlank()) {
-                            medDraPt = match.medDraPt
-                            soc = match.soc
-                        }
+                        validationErrorText = null
                     },
                     label = { Text("Adverse Event Term (CTCAE / MedDRA) *") },
                     placeholder = { Text("e.g. Diarrhea, Colitis, Pneumonitis") },
@@ -143,29 +171,28 @@ fun AddCaseBottomSheet(
                 )
 
                 // Quick suggestions from preloaded CTCAE library
-                if (adverseEventTerm.isBlank()) {
-                    Text(
-                        "Common clinical terms:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Diarrhea", "Colitis", "Pneumonitis", "Fatigue").forEach { term ->
-                            SuggestionChip(
-                                onClick = {
-                                    adverseEventTerm = term
-                                    val item = CtcaeDatabase.terms.find { it.term == term }
-                                    if (item != null) {
-                                        medDraPt = item.medDraPt
-                                        soc = item.soc
-                                    }
-                                },
-                                label = { Text(term, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
+                Text(
+                    "Select from CTCAE Library suggestions:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf("Diarrhea", "Colitis", "Pneumonitis", "Fatigue", "Nausea").forEach { term ->
+                        FilterChip(
+                            selected = adverseEventTerm.equals(term, ignoreCase = true),
+                            onClick = {
+                                adverseEventTerm = term
+                                val item = CtcaeDatabase.terms.find { it.term == term }
+                                if (item != null) {
+                                    medDraPt = item.medDraPt
+                                    soc = item.soc
+                                }
+                            },
+                            label = { Text(term, style = MaterialTheme.typography.labelSmall) }
+                        )
                     }
                 }
             }
@@ -241,7 +268,7 @@ fun AddCaseBottomSheet(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "CTCAE Criteria for Grade $selectedGrade:",
+                            text = "CTCAE v5.0 Criteria for Grade $selectedGrade:",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = getGradeColor(selectedGrade)
                         )
@@ -289,52 +316,78 @@ fun AddCaseBottomSheet(
                 SeriousnessBadge(isSerious = isSerious)
             }
 
-            // Causality & Action
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Causality
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Causality Assessment", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    var expanded by remember { mutableStateOf(false) }
+            // Causality, Outcome & Action Dropdowns
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Outcome
+                Column {
+                    Text("Clinical Outcome *", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    var expandedOutcome by remember { mutableStateOf(false) }
                     OutlinedButton(
-                        onClick = { expanded = true },
-                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { expandedOutcome = true },
+                        modifier = Modifier.fillMaxWidth().testTag("outcome_dropdown"),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text(causality, maxLines = 1)
+                        Text(outcome, maxLines = 1)
                     }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        listOf("Definite", "Probable", "Possible", "Unlikely", "Unrelated").forEach { opt ->
+                    DropdownMenu(expanded = expandedOutcome, onDismissRequest = { expandedOutcome = false }) {
+                        Outcome.entries.forEach { opt ->
                             DropdownMenuItem(
-                                text = { Text(opt) },
+                                text = { Text(opt.label) },
                                 onClick = {
-                                    causality = opt
-                                    expanded = false
+                                    outcome = opt.label
+                                    expandedOutcome = false
                                 }
                             )
                         }
                     }
                 }
 
-                // Action taken
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Action with Drug", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    var expandedAction by remember { mutableStateOf(false) }
-                    OutlinedButton(
-                        onClick = { expandedAction = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text(drugAction, maxLines = 1)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Causality
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Causality Assessment", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        var expandedCausality by remember { mutableStateOf(false) }
+                        OutlinedButton(
+                            onClick = { expandedCausality = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(causality, maxLines = 1)
+                        }
+                        DropdownMenu(expanded = expandedCausality, onDismissRequest = { expandedCausality = false }) {
+                            Causality.entries.forEach { opt ->
+                                DropdownMenuItem(
+                                    text = { Text(opt.label) },
+                                    onClick = {
+                                        causality = opt.label
+                                        expandedCausality = false
+                                    }
+                                )
+                            }
+                        }
                     }
-                    DropdownMenu(expanded = expandedAction, onDismissRequest = { expandedAction = false }) {
-                        listOf("Dose Not Changed", "Dose Reduced", "Dose Interrupted", "Permanently Discontinued").forEach { opt ->
-                            DropdownMenuItem(
-                                text = { Text(opt) },
-                                onClick = {
-                                    drugAction = opt
-                                    expandedAction = false
-                                }
-                            )
+
+                    // Action taken
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Action with Drug", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        var expandedAction by remember { mutableStateOf(false) }
+                        OutlinedButton(
+                            onClick = { expandedAction = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(drugAction, maxLines = 1)
+                        }
+                        DropdownMenu(expanded = expandedAction, onDismissRequest = { expandedAction = false }) {
+                            ActionTaken.entries.forEach { opt ->
+                                DropdownMenuItem(
+                                    text = { Text(opt.label) },
+                                    onClick = {
+                                        drugAction = opt.label
+                                        expandedAction = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -352,51 +405,76 @@ fun AddCaseBottomSheet(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            // Validation Error Banner
+            if (validationErrorText != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = validationErrorText!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+            }
+
             // Submit Button
-            val canSubmit = patientId.isNotBlank() && suspectDrug.isNotBlank() && adverseEventTerm.isNotBlank()
             Button(
                 onClick = {
-                    if (canSubmit) {
-                        val criteriaList = mutableListOf<String>()
-                        if (isDeath) criteriaList.add("Death")
-                        if (isLifeThreatening) criteriaList.add("Life-threatening")
-                        if (isHospitalization) criteriaList.add("Hospitalization")
-                        if (isDisability) criteriaList.add("Disability")
-                        if (isCongenital) criteriaList.add("Congenital anomaly")
-                        if (isImportantMedicalEvent) criteriaList.add("Important medical event")
+                    val criteriaList = mutableListOf<String>()
+                    if (isDeath) criteriaList.add("Death")
+                    if (isLifeThreatening) criteriaList.add("Life-threatening")
+                    if (isHospitalization) criteriaList.add("Hospitalization")
+                    if (isDisability) criteriaList.add("Disability")
+                    if (isCongenital) criteriaList.add("Congenital anomaly")
+                    if (isImportantMedicalEvent) criteriaList.add("Important medical event")
 
-                        val newCase = AeCase(
-                            patientId = patientId.trim(),
-                            protocolId = protocolId.trim(),
-                            suspectDrug = suspectDrug.trim(),
-                            adverseEventTerm = adverseEventTerm.trim(),
-                            medDraPt = medDraPt.ifBlank { adverseEventTerm.trim() },
-                            systemOrganClass = soc,
-                            grade = selectedGrade,
-                            gradeDescription = currentGradeCriteria,
-                            onsetDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                            isSerious = isSerious,
-                            seriousnessCriteria = criteriaList.joinToString(", ").ifBlank { "None" },
-                            causality = causality,
-                            outcome = outcome,
-                            actionTakenWithDrug = drugAction,
-                            clinicalNotes = clinicalNotes.trim()
-                        )
-                        onSubmit(newCase)
+                    val candidate = AeCase(
+                        id = caseToEdit?.id ?: 0,
+                        patientId = patientId.trim(),
+                        protocolId = protocolId.trim(),
+                        suspectDrug = suspectDrug.trim(),
+                        adverseEventTerm = adverseEventTerm.trim(),
+                        medDraPt = medDraPt.ifBlank { adverseEventTerm.trim() },
+                        systemOrganClass = soc,
+                        grade = selectedGrade,
+                        gradeDescription = currentGradeCriteria,
+                        onsetDate = onsetDate.trim(),
+                        isSerious = isSerious,
+                        seriousnessCriteria = criteriaList.joinToString(", ").ifBlank { "None" },
+                        causality = causality,
+                        outcome = outcome,
+                        actionTakenWithDrug = drugAction,
+                        clinicalNotes = clinicalNotes.trim(),
+                        reportedTimestamp = caseToEdit?.reportedTimestamp ?: System.currentTimeMillis(),
+                        isDemo = caseToEdit?.isDemo ?: false
+                    )
+
+                    when (val result = AeCaseValidator.validate(candidate)) {
+                        is ValidationResult.Valid -> {
+                            onSubmit(candidate)
+                        }
+                        is ValidationResult.Invalid -> {
+                            validationErrorText = result.errors.joinToString("\n")
+                        }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
                     .testTag("submit_case_button"),
-                enabled = canSubmit,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Save Case Locally (Offline)", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+                Text(
+                    if (caseToEdit != null) "Update Case Record" else "Save Case Locally (Offline)",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                )
             }
         }
     }
